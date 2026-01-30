@@ -11,18 +11,13 @@ const expenseSchema = new mongoose.Schema(
     amount: {
       type: Number,
       required: true,
+      min: 1,
     },
 
     category: {
       type: String,
-      required: true,
       enum: ["Food", "Travel", "Bills", "Shopping", "Other"],
       default: "Other",
-    },
-
-    date: {
-      type: Date,
-      default: Date.now,
     },
 
     user: {
@@ -32,7 +27,7 @@ const expenseSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true,
+    timestamps: true, // ⭐ createdAt & updatedAt auto
   }
 );
 

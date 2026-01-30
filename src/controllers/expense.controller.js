@@ -5,36 +5,80 @@ const Expense = require("../models/Expense.model");
 // ======================
 const addExpense = async (req, res) => {
   try {
-    const { title, amount, category, date } = req.body;
+    const { title, amount, category } = req.body;
 
-    if (!title || !amount || !category) {
-      return res.status(400).json({ message: "All fields are required" });
+    if (!title || !amount) {
+      return res.status(400).json({ message: "Title and amount are required" });
     }
 
     const expense = await Expense.create({
       title,
       amount,
       category,
-      date,
       user: req.user,
     });
 
     res.status(201).json(expense);
-  } catch {
+  } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
 };
 
 // ======================
-// GET EXPENSES
+// GET EXPENSES (FILTERS)
 // ======================
 const getExpenses = async (req, res) => {
   try {
-    const expenses = await Expense.find({ user: req.user }).sort({
-      createdAt: -1,
-    });
+    const {
+      type = "day", // day | month | year
+      year,
+      month,
+      category,
+      min,
+      max,
+    } = req.query;
+
+    const query = { user: req.user };
+
+    // CATEGORY FILTER
+    if (category) {
+      query.category = category;
+    }
+
+    // AMOUNT FILTER
+    if (min || max) {
+      query.amount = {};
+      if (min) query.amount.$gte = Number(min);
+      if (max) query.amount.$lte = Number(max);
+    }
+
+    // DATE FILTER
+    const now = new Date();
+
+    if (type === "day") {
+      const start = new Date(now.setHours(0, 0, 0, 0));
+      const end = new Date(now.setHours(23, 59, 59, 999));
+      query.createdAt = { $gte: start, $lte: end };
+    }
+
+    if (type === "month" && year && month) {
+      query.createdAt = {
+        $gte: new Date(year, month - 1, 1),
+        $lt: new Date(year, month, 1),
+      };
+    }
+
+    if (type === "year" && year) {
+      query.createdAt = {
+        $gte: new Date(year, 0, 1),
+        $lt: new Date(Number(year) + 1, 0, 1),
+      };
+    }
+
+    const expenses = await Expense.find(query).sort({ createdAt: -1 });
+
     res.json(expenses);
-  } catch {
+  } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -61,7 +105,7 @@ const updateExpense = async (req, res) => {
     );
 
     res.json(updated);
-  } catch {
+  } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -83,7 +127,7 @@ const deleteExpense = async (req, res) => {
 
     await expense.deleteOne();
     res.json({ message: "Expense deleted" });
-  } catch {
+  } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
 };
